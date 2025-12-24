@@ -274,13 +274,19 @@ int getCPUSlotSR(SR es);
 void setFlags(instruction inst, i32 destVal, i32 source, Flags &flag);
 void printFlags(Flags &flag);
 
-int main()
+int main(int argc, char* argv[])
 {
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <file_path>\n";
+        return 1;
+    }
+
+    std::string filePath = argv[1];
+    
     ifstream inputFile;
 
     // open file
-    string filename = "C:\\Users\\hjami\\listing_0052_memory_add_loop";
-    inputFile.open(filename, ios::in | ios::binary);
+    inputFile.open(filePath, ios::in | ios::binary);
 
     if (!inputFile)
     {
