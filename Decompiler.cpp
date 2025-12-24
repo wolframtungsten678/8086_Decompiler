@@ -10,7 +10,7 @@ typedef int16_t i16;
 typedef int32_t i32;
 
 // enums
-const enum Operation {
+enum Operation {
     conditional_jump,
     immediate_to_register,
     immediate_to_register_mem,
@@ -55,7 +55,7 @@ enum WFlag
     Word
 };
 
-const enum Lo_Hi_Byte {
+enum Lo_Hi_Byte {
     low_byte,
     high_byte,
     neither
@@ -125,7 +125,7 @@ enum class SR
     ss
 };
 
-const enum Direction {
+enum Direction {
     accumulator_is_source,
     accumulator_is_destination,
     register_is_source,
