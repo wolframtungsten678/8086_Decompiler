@@ -1557,12 +1557,18 @@ void emulateCommand(instruction inst1, CPU &cpu, Memory &memory, Flags &flag)
             if (inst1.reg_mem_to_from_reg.d == register_is_source)
             {
                 source = cpu.regSlots[getCPUSlotRM(inst1.reg_mem_to_from_reg.source, levelSource)];
-                destCalc = getCPUMem(inst1, inst1.reg_mem_to_from_reg.dest, cpu);
+                if (inst1.reg_mem_to_from_reg.mod != register_mode)
+                {
+                    destCalc = getCPUMem(inst1, inst1.reg_mem_to_from_reg.dest, cpu);
+                }
             }
             else
             {
                 source = getCPUMem(inst1, inst1.reg_mem_to_from_reg.source, cpu);
+                if (inst1.reg_mem_to_from_reg.mod != register_mode)
+                {
                 destination = getCPUSlotRM(inst1.reg_mem_to_from_reg.dest, levelDest);
+                }
             }
             switch (inst1.reg_mem_to_from_reg.mod)
             {
@@ -2016,6 +2022,13 @@ void emulateCommand(instruction inst1, CPU &cpu, Memory &memory, Flags &flag)
     case loopnz:
         cpu.regSlots[2] -= 1;
         if ((flag.flags[9] == false) && (cpu.regSlots[2] != 0))
+        {
+            cpu.regSlots[12] += inst1.cond_jmp.data;
+        }
+        break;
+    case loopz:
+        cpu.regSlots[2] -= 1;
+        if ((flag.flags[9] == true) && (cpu.regSlots[2] != 0))
         {
             cpu.regSlots[12] += inst1.cond_jmp.data;
         }
