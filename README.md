@@ -1,6 +1,6 @@
 # **Intel 8086 Decompiler/Simulator** 
 ## **What Is This?**
-This is a decompiler and simulator of the Intel 8086 processor which ingests binary instruction sets and outputs the corresponding assembly code and a printout of register and flag states. 
+This is a decompiler and simulator of the Intel 8086 processor which ingests binary instruction sets and outputs the corresponding assembly code and a printout of register and flag states to the terminal. 
 
 Sample binary files are provided for use with the decompiler/simulator, and are from Casey Muratori's [performance aware programming course](https://github.com/cmuratori/computer_enhance/tree/main/perfaware/part1). 
 
