@@ -24,26 +24,26 @@ enum Mnemonic
 {
     add,
     cmp,
-    je,
-    jl,
-    jle,
+    ja,
     jb,
     jbe,
-    jp,
-    jo,
-    js,
+    jcxz,
+    je,
+    jg,
+    jl,
+    jle,
+    jnb,
     jne,
     jnl,
-    jg,
-    jnb,
-    ja,
-    jnp,
     jno,
+    jnp,
     jns,
+    jo,
+    jp,
+    js,
     loop,
     loopz,
     loopnz,
-    jcxz,
     mov,
     sub
 };
@@ -241,12 +241,12 @@ string flagsList[16] = {"", "", "", "", "O", "D", "I", "T", "S", "Z", "", "A", "
 int flagsListMask[9] = {4, 5, 6, 7, 8, 9, 11, 13, 15};
 
 // Masks
-const int singBitConv = 0b00000001;
-const int twoBitConv = 0b00000011;
-const int threeBitconv = 0b00000111;
-const int fourBitConv = 0b00001111;
-const int sixBitConv = 0b00111111;
-const int sevBitConv = 0b01111111;
+const int oneBitMask = 0b00000001;
+const int twoBitMask = 0b00000011;
+const int threeBitMask = 0b00000111;
+const int fourBitMask = 0b00001111;
+const int sixBitMask = 0b00111111;
+const int sevBitMask = 0b01111111;
 const int highBitsMask = 0b1111111100000000;
 const int lowBitsMask = 0b0000000011111111;
 const int sixteenBitMask = 0b1111111111111111;
@@ -263,7 +263,6 @@ void getSourceAndDest(instruction &inst1);
 int getSize(instruction &inst1);
 void printCommand(instruction &inst1, DispFlag d);
 void emulateCommand(instruction inst, CPU &cpu, Memory &memory, Flags &flag);
-void printOperation(instruction inst1, CPU cpu);
 string enumRMToString(RM rm, int d);
 string enumSRToString(SR sr);
 string enumWToString(WFlag w);
@@ -272,7 +271,7 @@ int getCPUSlotRM(RM ax, Lo_Hi_Byte &lo);
 int getCPUMem(instruction inst1, RM ax, CPU cpu);
 int getCPUSlotSR(SR es);
 void setFlags(instruction inst, i32 destVal, i32 source, Flags &flag);
-void printFlags(Flags &flag);
+
 
 int main(int argc, char* argv[])
 {
@@ -302,7 +301,7 @@ int main(int argc, char* argv[])
     char *buffer = new char[fileSize];
     inputFile.read(buffer, fileSize);
 
-    // Create simulated CPU & flags
+    // Create simulated CPU & flag objects
     CPU registers;
     Flags flag;
     Memory memory;
@@ -357,10 +356,10 @@ int main(int argc, char* argv[])
 
 instruction getInstructionType(char buffer[], int j)
 {
-    int test1 = (buffer[j] >> 1) & sevBitConv;
-    int test2 = (buffer[j] >> 2) & sixBitConv;
-    int test4 = (buffer[j] >> 4) & fourBitConv;
-    int byteTwoTest = (buffer[j + 1] >> 3) & threeBitconv;
+    int test1 = (buffer[j] >> 1) & sevBitMask;
+    int test2 = (buffer[j] >> 2) & sixBitMask;
+    int test4 = (buffer[j] >> 4) & fourBitMask;
+    int byteTwoTest = (buffer[j + 1] >> 3) & threeBitMask;
     Operation oper_tag;
     Mnemonic mnemonic;
 
@@ -544,6 +543,7 @@ instruction getInstructionType(char buffer[], int j)
     inst1.op_code = buffer[j];
     inst1.byteTwo = buffer[j + 1];
 
+    // Assign direction of operation, d
     if (inst1.op_tag == register_mem_to_from_seg_register)
     {
         switch (buffer[j] & lowBitsMask)
@@ -587,6 +587,7 @@ instruction getInstructionType(char buffer[], int j)
     return inst1;
 }
 
+// w bit indicates size of data operated on (byte or word)
 void getW(char buffer[], int j, instruction &inst1)
 {
     int wide = -1;
@@ -621,6 +622,7 @@ void getW(char buffer[], int j, instruction &inst1)
     }
 }
 
+// s bit indicates if immediate data is sign extended to 16 bits 
 void getS(char buffer[], int j, instruction &inst1)
 {
     int sVal = -1;
@@ -638,9 +640,12 @@ void getS(char buffer[], int j, instruction &inst1)
     inst1.imm_to_reg_mem.s = sVal;
 }
 
+// RM indicates field encoding for register or memory
 void getRM(char buffer[], int j, instruction &inst1)
 {
-    MOD mode = (MOD)((buffer[j + 1] >> 6) & twoBitConv);
+    // mode encodes for memory vs. register mode and 8- or 16-bit displacement
+    // for effective address calculation
+    MOD mode = (MOD)((buffer[j + 1] >> 6) & twoBitMask);
     switch (inst1.op_tag)
     {
     case register_mem_to_from_register:
@@ -667,7 +672,7 @@ void getRM(char buffer[], int j, instruction &inst1)
     }
     else
     {
-        int rm1 = (buffer[j + 1] & threeBitconv);
+        int rm1 = (buffer[j + 1] & threeBitMask);
         RM rmConv = RM::not_set;
         switch (mode)
         {
@@ -842,7 +847,7 @@ void getREG(char buffer[], int j, instruction &inst1)
     switch (inst1.op_tag)
     {
     case register_mem_to_from_register:
-        regist = ((buffer[j + 1] >> 3) & threeBitconv);
+        regist = ((buffer[j + 1] >> 3) & threeBitMask);
         if (inst1.w == Word)
         {
             switch (regist)
@@ -905,7 +910,7 @@ void getREG(char buffer[], int j, instruction &inst1)
         }
         break;
     case immediate_to_register:
-        switch ((inst1.op_code >> 1) & sevBitConv)
+        switch ((inst1.op_code >> 1) & sevBitMask)
         {
         case 0b00000010:
         case 0b00010110:
@@ -922,7 +927,7 @@ void getREG(char buffer[], int j, instruction &inst1)
             inst1.imm_to_reg.reg = RM::al;
             break;
         default:
-            regist = buffer[j] & threeBitconv;
+            regist = buffer[j] & threeBitMask;
             if (inst1.w == Word)
             {
                 switch (regist)
@@ -988,7 +993,7 @@ void getREG(char buffer[], int j, instruction &inst1)
         }
         break;
     case register_mem_to_from_seg_register:
-        regist = ((buffer[j + 1] >> 3) & twoBitConv);
+        regist = ((buffer[j + 1] >> 3) & twoBitMask);
         switch (regist)
         {
         case 0:
@@ -2038,43 +2043,6 @@ void emulateCommand(instruction inst1, CPU &cpu, Memory &memory, Flags &flag)
     }
 }
 
-void printOperation(instruction inst1, CPU cpu)
-{
-    Lo_Hi_Byte junk = neither;
-    switch (inst1.op_tag)
-    {
-    case immediate_to_register:
-        cout << regList[getCPUSlotRM(inst1.imm_to_reg.dest, junk)] << " new value is: " << cpu.regSlots[getCPUSlotRM(inst1.imm_to_reg.dest, junk)] << endl;
-        break;
-    case immediate_to_register_mem:
-        cout << regList[getCPUSlotRM(inst1.imm_to_reg_mem.dest, junk)] << " new value is: " << cpu.regSlots[getCPUSlotRM(inst1.imm_to_reg_mem.dest, junk)] << endl;
-        break;
-    case register_mem_to_from_register:
-        cout << regList[getCPUSlotRM(inst1.reg_mem_to_from_reg.dest, junk)] << " new value is: " << cpu.regSlots[getCPUSlotRM(inst1.reg_mem_to_from_reg.dest, junk)] << endl;
-        break;
-    case register_mem_to_from_seg_register:
-        if (inst1.reg_mem_to_from_seg_reg.d == Direction::segment_register_is_destination)
-        {
-            cout << regList[getCPUSlotSR(inst1.reg_mem_to_from_seg_reg.operandTwo)] << " new value is: " << cpu.regSlots[getCPUSlotSR(inst1.reg_mem_to_from_seg_reg.operandTwo)] << endl;
-        }
-        else
-        {
-            cout << regList[getCPUSlotRM(inst1.reg_mem_to_from_seg_reg.operandOne, junk)] << " new value is: " << cpu.regSlots[getCPUSlotRM(inst1.reg_mem_to_from_seg_reg.operandOne, junk)] << endl;
-        }
-        break;
-    case memory_to_acc_or_vv:
-        if (inst1.mem_to_acc.d == Direction::accumulator_is_destination)
-        {
-            cout << regList[getCPUSlotRM(inst1.mem_to_acc.operandOne, junk)] << " new value is: " << cpu.regSlots[getCPUSlotRM(inst1.mem_to_acc.operandOne, junk)] << endl;
-        }
-        else
-        {
-            cout << "Not yet coded - ERROR" << endl;
-        }
-        break;
-    }
-}
-
 string enumRMToString(RM a, int d)
 {
     switch (a)
@@ -2586,7 +2554,7 @@ void setFlags(instruction inst1, i32 result, i32 source, Flags &flag)
     int parity = (result & 1);
     for (int i = 1; i < 9; i++)
     {
-        parity += (((result & lowBitsMask) >> i) & singBitConv);
+        parity += (((result & lowBitsMask) >> i) & oneBitMask);
     }
 
     if (parity % 2 == 0)
@@ -2695,12 +2663,12 @@ void setFlags(instruction inst1, i32 result, i32 source, Flags &flag)
     }
 
     // Auxilliary Carry Flag
-    i8 lowNibbleSource = (source & fourBitConv);
+    i8 lowNibbleSource = (source & fourBitMask);
     i8 lowNibbleDestination = 0;
     switch (inst1.mnemonic)
     {
     case add:
-        lowNibbleDestination = ((result - source) & fourBitConv);
+        lowNibbleDestination = ((result - source) & fourBitMask);
         if ((lowNibbleDestination + lowNibbleSource) > 15)
         {
             flag.flags[11] = true;
@@ -2711,9 +2679,9 @@ void setFlags(instruction inst1, i32 result, i32 source, Flags &flag)
         }
         break;
     case sub:
-        lowNibbleDestination = ((result + source) & fourBitConv);
+        lowNibbleDestination = ((result + source) & fourBitMask);
     case cmp:
-        lowNibbleDestination = ((result + source) & fourBitConv);
+        lowNibbleDestination = ((result + source) & fourBitMask);
         if (lowNibbleDestination >= lowNibbleSource)
         {
             flag.flags[11] = false;
@@ -2723,16 +2691,4 @@ void setFlags(instruction inst1, i32 result, i32 source, Flags &flag)
             flag.flags[11] = true;
         }
     }
-}
-
-void printFlags(Flags &flag)
-{
-    for (int i = 0; i < 16; i++)
-    {
-        if (flag.flags[i] != 0)
-        {
-            cout << " " << flagsList[i] << " ";
-        }
-    }
-    cout << endl;
 }
